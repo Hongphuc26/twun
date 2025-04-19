@@ -2,22 +2,118 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <title>Phân phối theo khu vực</title>
+  <title>HỆ THỐNG PHÂN PHỐI</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="./asset/css/styles.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Times New Roman', serif;
+      background-color: #f0f0f0;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 20px;
+      background-color: #fff;
+      margin: 0;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .main-layout {
+      display: flex;
+      height: calc(100vh - 80px);
+    }
+
+    .left-panel {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: white;
+      border-right: 1px solid #ccc;
+    }
+
+    .right-panel {
+      flex: 1;
+      padding: 10px;
+    }
+
+    .form-section label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .region-block {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+      background: #fafafa;
+    }
+
+    .location-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .location-row input {
+      flex: 1;
+    }
+
+    .button-row {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #333;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #555;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      border: 2px solid #ccc;
+    }
+  </style>
 </head>
 <body>
 
-  <h1> Hệ thống tối ưu phân phối theo khu vực </h1>
+  <h1> HỆ THỐNG PHÂN PHỐI TỐI ƯU THEO KHU VỰC </h1>
 
   <div class="main-layout">
     <div class="left-panel">
       <div class="form-section">
-        <label> Nhà cung cấp </label>
-        <input type="text" id="providerName" placeholder="vd: Công ty ABC,..." />
+        <label>Tên nhà cung cấp</label>
+        <input type="text" id="supplierName" placeholder="VD: Công ty TNHH ABC">
 
-        <label>Địa chỉ kho hàng </label>
-        <input type="text" id="warehouseAddress" placeholder="vd: Kho ABC,..." />
+        <label>Địa chỉ nhà cung cấp</label>
+        <input type="text" id="supplierAddress" placeholder="VD: 123 Đường A, Quận B">
+
+        <label>Địa chỉ kho hàng</label>
+        <input type="text" id="warehouseAddress" placeholder="VD: Kho ABC, Quận C">
+
+        <label>Tên mặt hàng</label>
+        <input type="text" id="itemName" placeholder="VD: Gạo, Sữa, Nước tương,...">
 
         <label>Danh mục hàng hóa</label>
         <select id="category">
@@ -28,25 +124,25 @@
 
         <label>Đơn vị khối lượng</label>
         <select id="unit">
-          <option value="kg"> KG </option>
-          <option value="ml"> Ml</option>
+          <option value="kg">KG</option>
+          <option value="ml">ML</option>
           <option value="bich">Bịch</option>
-          <option value="suat">Suất </option>
+          <option value="suat">Suất</option>
         </select>
 
-        <label>Tổng số lượng (tùy theo đơn vị)</label>
-        <input type="number" id="supply" placeholder="VD: 300" />
+        <label>Tổng số lượng</label>
+        <input type="number" id="supply" placeholder="VD: 300">
 
-        <label>Hạn sử dụng (bao nhiêu ngày kể từ hôm nay)</label>
-        <input type="number" id="expiryDays" placeholder="VD: 3" />
+        <label>Hạn sử dụng đến:</label>
+        <input type="datetime-local" id="expiryDate">
 
         <div id="regionContainer"></div>
 
         <div class="button-row">
-          <button id="addRegion"> Quận </button>
+          <button id="addRegion"> Thêm Quận</button>
         </div>
         <div class="button-row">
-          <button onclick="calculateOptimalDistribution()">🔍 Hệ thống phân phối</button>
+          <button onclick="calculateOptimalDistribution()"> Tính toán phân phối</button>
         </div>
       </div>
     </div>
@@ -56,7 +152,6 @@
     </div>
   </div>
 
-  <!-- Script -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     const regionContainer = document.getElementById('regionContainer');
@@ -66,7 +161,7 @@
       const regionBlock = document.createElement('div');
       regionBlock.className = 'region-block';
       regionBlock.innerHTML = `
-        <label>🏙️ Tên Quận:</label>
+        <label>Tên Quận</label>
         <input type="text" class="region-name" placeholder="VD: Quận 1">
         <div class="location-list"></div>
         <button class="add-location">Thêm địa điểm</button>
@@ -111,16 +206,19 @@
     }
 
     async function calculateOptimalDistribution() {
-      const providerName = document.getElementById('providerName').value.trim();
+      const supplierName = document.getElementById('supplierName').value.trim();
+      const supplierAddress = document.getElementById('supplierAddress').value.trim();
       const warehouseAddress = document.getElementById('warehouseAddress').value.trim();
+      const itemName = document.getElementById('itemName').value.trim();
       const category = document.getElementById('category').value;
       const dishName = categoryLabel(category);
       const supply = parseInt(document.getElementById('supply').value);
-      const expiryDays = parseInt(document.getElementById('expiryDays').value);
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + expiryDays);
+      const expiryInput = document.getElementById('expiryDate').value;
+      const expiryDate = new Date(expiryInput);
 
+      const supplierCoords = await geocodeAddress(supplierAddress);
       const warehouseCoords = await geocodeAddress(warehouseAddress);
+
       let regions = [];
 
       for (const block of document.querySelectorAll('.region-block')) {
@@ -162,19 +260,23 @@
         if (layer instanceof L.Polyline || layer instanceof L.Marker) map.removeLayer(layer);
       });
 
-      L.marker(warehouseCoords).addTo(map).bindPopup("Kho cung cấp").openPopup();
+      L.marker(supplierCoords).addTo(map).bindPopup("Nhà cung cấp").openPopup();
+      L.marker(warehouseCoords).addTo(map).bindPopup("Kho hàng");
+
       for (const l of allocations) {
-        L.marker(l.coords).addTo(map).bindPopup(`${l.address}<br>${l.allocated} suất`);
+        L.marker(l.coords).addTo(map).bindPopup(`${l.address}<br>📦 ${l.allocated} suất`);
       }
 
-      const points = [warehouseCoords, ...allocations.map(l => l.coords)];
+      const points = [supplierCoords, warehouseCoords, ...allocations.map(l => l.coords)];
       const lines = await getTripRoute(points);
       if (lines) L.polyline(lines, { color: 'blue' }).addTo(map);
       map.fitBounds(lines);
 
       localStorage.setItem("resultData", JSON.stringify({
-        providerName,
+        supplierName,
+        supplierAddress,
         addressC: warehouseAddress,
+        itemName,
         dishName,
         expiry: expiryDate.toISOString().split('T')[0],
         totalCost: best.distance.toFixed(2),

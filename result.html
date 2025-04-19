@@ -2,18 +2,26 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Kết quả phân phối</title>
+  <title>HỆ THỐNG PHÂN PHỐI</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="./asset/css/result.css">
 </head>
 <body>
 
-<h1>📊 Kết quả Tối ưu Phân phối</h1>
+<h1>KẾT QUẢ HỆ THỐNG PHÂN PHỐI THEO KHU VỰC</h1>
 <div class="layout">
   <div class="left-panel">
     <div class="info-block">
-      <label>Nhà cung cấp:</label>
-      <span id="providerName"></span>
+      <label>Tên nhà cung cấp:</label>
+      <span id="supplierName"></span>
+    </div>
+    <div class="info-block">
+      <label>Địa chỉ nhà cung cấp:</label>
+      <span id="supplierAddress"></span>
+    </div>
+    <div class="info-block">
+      <label>Tên mặt hàng:</label>
+      <span id="itemName"></span>
     </div>
     <div class="info-block">
       <label>Kho cung cấp:</label>
@@ -25,7 +33,7 @@
     </div>
     <div class="info-block">
       <label>Hạn sử dụng đến:</label>
-      <span id="expiry"></span>
+      <span id="expiryDate"></span>
     </div>
     <div class="info-block">
       <label>Khu vực ưu tiên:</label>
@@ -48,8 +56,9 @@
       <tbody id="allocationsTable"></tbody>
     </table>
   </div>
+
   <div class="right-map">
-    <div id="map"></div>
+    <div id="map" style="height: 600px;"></div>
   </div>
 </div>
 
@@ -61,13 +70,22 @@
     throw new Error("Không tìm thấy resultData trong localStorage.");
   }
 
-  document.getElementById("providerName").textContent = result.providerName;
+  // Gán dữ liệu ra UI
+  document.getElementById("supplierName").textContent = result.supplierName || "Chưa có";
+  document.getElementById("supplierAddress").textContent = result.supplierAddress || "Chưa có";
+  document.getElementById("itemName").textContent = result.itemName || "Chưa có";
   document.getElementById("addressC").textContent = result.addressC;
   document.getElementById("dishName").textContent = result.dishName;
-  document.getElementById("expiry").textContent = result.expiry;
+
+  const formattedDate = new Date(result.expiry).toLocaleString("vi-VN", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
+  });
+  document.getElementById("expiryDate").textContent = formattedDate;
   document.getElementById("regionName").textContent = result.regionName;
   document.getElementById("totalCost").textContent = result.totalCost + " km";
 
+  // Bảng phân bổ chi tiết
   const table = document.getElementById("allocationsTable");
   result.allocations.forEach(item => {
     const row = document.createElement("tr");
@@ -79,19 +97,42 @@
     table.appendChild(row);
   });
 
+  // Bản đồ
   const map = L.map('map').setView([10.762622, 106.660172], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
+  const points = result.routeGeometry || [];
+
+  // Marker: nhà cung cấp
+  if (points.length > 0) {
+    const supplierMarker = L.marker(points[0]).addTo(map);
+    supplierMarker.bindPopup("🏭 Nhà cung cấp").openPopup();
+  }
+
+  // Marker: kho hàng
+  if (points.length > 1) {
+    const warehouseMarker = L.marker(points[1]).addTo(map);
+    warehouseMarker.bindPopup("🏬 Kho hàng");
+  }
+
+  // Marker: các điểm phân phối
   result.allocations.forEach(loc => {
     L.marker(loc.coords).addTo(map)
-      .bindPopup(`<b>${loc.address}</b><br>Phân phối: ${loc.allocated} suất`);
+      .bindPopup(`📍 ${loc.address}<br>Phân phối: ${loc.allocated} suất`);
   });
 
-  if (result.routeGeometry && result.routeGeometry.length > 0) {
-    const route = L.polyline(result.routeGeometry, { color: 'blue' }).addTo(map);
-    map.fitBounds(route.getBounds());
+  // Đường: từ nhà cung cấp đến kho (đỏ), từ kho đến điểm phân phối (xanh)
+  if (points.length > 1) {
+    const supplierToWarehouse = [points[0], points[1]];
+    const warehouseToRecipients = points.slice(1);
+
+    L.polyline(supplierToWarehouse, { color: 'red', weight: 5 }).addTo(map);
+    L.polyline(warehouseToRecipients, { color: 'blue', weight: 4 }).addTo(map);
+
+    const bounds = L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
+    map.fitBounds(bounds);
   }
 </script>
 
