@@ -8,45 +8,45 @@
 </head>
 <body>
 
-  <h1>🚚 Hệ thống tối ưu phân phối theo khu vực</h1>
+  <h1> Hệ thống tối ưu phân phối theo khu vực </h1>
 
   <div class="main-layout">
     <div class="left-panel">
       <div class="form-section">
-        <label>🏭 Tên nhà cung cấp:</label>
-        <input type="text" id="providerName" placeholder="VD: Siêu thị CoopMart" />
+        <label> Nhà cung cấp </label>
+        <input type="text" id="providerName" placeholder="vd: Công ty ABC,..." />
 
-        <label>📍 Địa chỉ kho:</label>
-        <input type="text" id="warehouseAddress" placeholder="VD: Bệnh viện Chợ Rẫy" />
+        <label>Địa chỉ kho hàng </label>
+        <input type="text" id="warehouseAddress" placeholder="vd: Kho ABC,..." />
 
-        <label>📦 Danh mục hàng hóa:</label>
+        <label>Danh mục hàng hóa</label>
         <select id="category">
           <option value="processed_dry">Hàng đã qua chế biến - khô</option>
           <option value="processed_liquid">Hàng đã qua chế biến - lỏng</option>
           <option value="grocery">Hàng bách hóa</option>
         </select>
 
-        <label>⚖️ Đơn vị khối lượng:</label>
+        <label>Đơn vị khối lượng</label>
         <select id="unit">
-          <option value="kg">Kilogram (kg)</option>
-          <option value="ml">Milliliter (ml)</option>
+          <option value="kg"> KG </option>
+          <option value="ml"> Ml</option>
           <option value="bich">Bịch</option>
-          <option value="suat">Suất ăn</option>
+          <option value="suat">Suất </option>
         </select>
 
-        <label>🍱 Tổng số lượng (tùy theo đơn vị):</label>
+        <label>Tổng số lượng (tùy theo đơn vị)</label>
         <input type="number" id="supply" placeholder="VD: 300" />
 
-        <label>⏰ Hạn sử dụng (bao nhiêu ngày kể từ hôm nay):</label>
+        <label>Hạn sử dụng (bao nhiêu ngày kể từ hôm nay)</label>
         <input type="number" id="expiryDays" placeholder="VD: 3" />
 
         <div id="regionContainer"></div>
 
         <div class="button-row">
-          <button id="addRegion">➕ Thêm Quận</button>
+          <button id="addRegion"> Quận </button>
         </div>
         <div class="button-row">
-          <button onclick="calculateOptimalDistribution()">🔍 Tính toán phân phối</button>
+          <button onclick="calculateOptimalDistribution()">🔍 Hệ thống phân phối</button>
         </div>
       </div>
     </div>
@@ -69,7 +69,7 @@
         <label>🏙️ Tên Quận:</label>
         <input type="text" class="region-name" placeholder="VD: Quận 1">
         <div class="location-list"></div>
-        <button class="add-location">➕ Thêm địa điểm</button>
+        <button class="add-location">Thêm địa điểm</button>
       `;
       regionContainer.appendChild(regionBlock);
       regionBlock.querySelector('.add-location').onclick = () => addLocation(regionBlock);
