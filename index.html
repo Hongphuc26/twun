@@ -6,307 +6,186 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="./asset/css/styles.css">
   <style>
-    body {
-      margin: 0;
-      font-family: 'Times New Roman', serif;
-      background-color: #f0f0f0;
-    }
-
-    h1 {
-      text-align: center;
-      padding: 20px;
-      background-color: #fff;
-      margin: 0;
-      border-bottom: 1px solid #ccc;
-    }
-
-    .main-layout {
-      display: flex;
-      height: calc(100vh - 80px);
-    }
-
-    .left-panel {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-      background: white;
-      border-right: 1px solid #ccc;
-    }
-
-    .right-panel {
-      flex: 1;
-      padding: 10px;
-    }
-
-    .form-section label {
-      font-weight: bold;
-      display: block;
-      margin-top: 10px;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    .region-block {
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 15px;
-      margin-top: 20px;
-      background: #fafafa;
-    }
-
-    .location-row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .location-row input {
-      flex: 1;
-    }
-
-    .button-row {
-      text-align: center;
-      margin-top: 20px;
-    }
-
-    button {
-      padding: 10px 20px;
-      background-color: #333;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #555;
-    }
-
-    #map {
-      width: 100%;
-      height: 100%;
-      border-radius: 10px;
-      border: 2px solid #ccc;
-    }
+    body { margin: 0; font-family: 'Times New Roman', serif; background-color: #f0f0f0; }
+    h1 { text-align: center; padding: 20px; background-color: #fff; margin: 0; border-bottom: 1px solid #ccc; }
+    .main-layout { display: flex; height: calc(100vh - 80px); }
+    .left-panel { flex: 1; padding: 20px; overflow-y: auto; background: white; border-right: 1px solid #ccc; }
+    .right-panel { flex: 1; padding: 10px; }
+    .form-section label { font-weight: bold; display: block; margin-top: 10px; }
+    input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
+    .supplier-block, .region-block { border: 1px solid #ccc; border-radius: 8px; padding: 15px; margin-top: 20px; background: #fafafa; }
+    .location-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .location-row input { flex: 1; }
+    .button-row { text-align: center; margin-top: 20px; }
+    button { padding: 10px 20px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background-color: #555; }
+    #map { width: 100%; height: 100%; border-radius: 10px; border: 2px solid #ccc; }
   </style>
 </head>
 <body>
-
-  <h1> HỆ THỐNG PHÂN PHỐI TỐI ƯU THEO KHU VỰC </h1>
-
-  <div class="main-layout">
-    <div class="left-panel">
-      <div class="form-section">
-        <label>Tên nhà cung cấp</label>
-        <input type="text" id="supplierName" placeholder="VD: Công ty TNHH ABC">
-
-        <label>Địa chỉ nhà cung cấp</label>
-        <input type="text" id="supplierAddress" placeholder="VD: 123 Đường A, Quận B">
-
-        <label>Địa chỉ kho hàng</label>
-        <input type="text" id="warehouseAddress" placeholder="VD: Kho ABC, Quận C">
-
-        <label>Tên mặt hàng</label>
-        <input type="text" id="itemName" placeholder="VD: Gạo, Sữa, Nước tương,...">
-
-        <label>Danh mục hàng hóa</label>
-        <select id="category">
-          <option value="processed_dry">Hàng đã qua chế biến - khô</option>
-          <option value="processed_liquid">Hàng đã qua chế biến - lỏng</option>
-          <option value="grocery">Hàng bách hóa</option>
-        </select>
-
-        <label>Đơn vị khối lượng</label>
-        <select id="unit">
-          <option value="kg">KG</option>
-          <option value="ml">ML</option>
-          <option value="bich">Bịch</option>
-          <option value="suat">Suất</option>
-        </select>
-
-        <label>Tổng số lượng</label>
-        <input type="number" id="supply" placeholder="VD: 300">
-
-        <label>Hạn sử dụng đến:</label>
-        <input type="datetime-local" id="expiryDate">
-
-        <div id="regionContainer"></div>
-
-        <div class="button-row">
-          <button id="addRegion"> Thêm Quận</button>
-        </div>
-        <div class="button-row">
-          <button onclick="calculateOptimalDistribution()"> Tính toán phân phối</button>
-        </div>
+<h1> HỆ THỐNG PHÂN PHỐI TỐI ƯU THEO KHU VỰC </h1>
+<div class="main-layout">
+  <div class="left-panel">
+    <div class="form-section">
+      <div id="supplierContainer"></div>
+      <label>Địa chỉ kho hàng</label>
+      <input type="text" id="warehouseAddress" placeholder="VD: Kho ABC, Quận C">
+      <div id="regionContainer"></div>
+      <div class="button-row">
+        <button id="addSupplier">➕ Thêm nhà cung cấp</button>
+        <button id="addRegion">➕ Thêm Quận</button>
+      </div>
+      <div class="button-row">
+        <button onclick="calculateOptimalDistribution()">🚀 Tính toán phân phối</button>
       </div>
     </div>
-
-    <div class="right-panel">
-      <div id="map"></div>
-    </div>
   </div>
+  <div class="right-panel">
+    <div id="map"></div>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  const supplierContainer = document.getElementById('supplierContainer');
+  const regionContainer = document.getElementById('regionContainer');
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    const regionContainer = document.getElementById('regionContainer');
-    document.getElementById('addRegion').onclick = () => addRegion();
+  document.getElementById('addSupplier').onclick = () => addSupplier();
+  document.getElementById('addRegion').onclick = () => addRegion();
 
-    function addRegion() {
-      const regionBlock = document.createElement('div');
-      regionBlock.className = 'region-block';
-      regionBlock.innerHTML = `
-        <label>Tên Quận</label>
-        <input type="text" class="region-name" placeholder="VD: Quận 1">
-        <div class="location-list"></div>
-        <button class="add-location">Thêm địa điểm</button>
-      `;
-      regionContainer.appendChild(regionBlock);
-      regionBlock.querySelector('.add-location').onclick = () => addLocation(regionBlock);
-      addLocation(regionBlock);
+  function addSupplier() {
+    const block = document.createElement('div');
+    block.className = 'supplier-block';
+    block.innerHTML = `
+      <label>Tên nhà cung cấp</label>
+      <input type="text" class="supplier-name" placeholder="VD: Công ty TNHH ABC">
+      <label>Địa chỉ nhà cung cấp</label>
+      <input type="text" class="supplier-address" placeholder="VD: 123 Đường A, Quận B">
+      <label>Tên mặt hàng</label>
+      <input type="text" class="item-name" placeholder="VD: Gạo, Sữa,...">
+      <label>Danh mục hàng hóa</label>
+      <select class="category">
+        <option value="processed_dry">Hàng đã qua chế biến - khô</option>
+        <option value="processed_liquid">Hàng đã qua chế biến - lỏng</option>
+        <option value="grocery">Hàng bách hóa</option>
+      </select>
+      <label>Đơn vị</label>
+      <select class="unit">
+        <option value="kg">KG</option>
+        <option value="ml">ML</option>
+        <option value="bich">Bịch</option>
+        <option value="suat">Suất</option>
+      </select>
+      <label>Số lượng</label>
+      <input type="number" class="supply" placeholder="VD: 300">
+      <label>Hạn sử dụng đến:</label>
+      <input type="datetime-local" class="expiry-date">
+      <button onclick="this.parentElement.remove()">❌ Xóa</button>
+    `;
+    supplierContainer.appendChild(block);
+  }
+
+  function addRegion() {
+    const regionBlock = document.createElement('div');
+    regionBlock.className = 'region-block';
+    regionBlock.innerHTML = `
+      <label>Tên Quận</label>
+      <input type="text" class="region-name" placeholder="VD: Quận 1">
+      <div class="location-list"></div>
+      <button class="add-location">Thêm địa điểm</button>
+    `;
+    regionContainer.appendChild(regionBlock);
+    regionBlock.querySelector('.add-location').onclick = () => addLocation(regionBlock);
+    addLocation(regionBlock);
+  }
+
+  function addLocation(regionBlock) {
+    const list = regionBlock.querySelector('.location-list');
+    const row = document.createElement('div');
+    row.className = 'location-row';
+    row.innerHTML = `
+      <input type="text" class="location-address" placeholder="Phường / địa chỉ cụ thể">
+      <input type="number" class="location-demand" placeholder="Số người" min="1">
+      <button onclick="this.parentElement.remove()">❌</button>
+    `;
+    list.appendChild(row);
+  }
+
+  const map = L.map('map').setView([10.762622, 106.660172], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  async function geocodeAddress(address) {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.length) throw new Error("Không tìm thấy địa chỉ: " + address);
+    return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+  }
+
+  async function getRouteGeometry(from, to) {
+    const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.routes?.length) return null;
+    return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+  }
+
+  async function calculateOptimalDistribution() {
+    const warehouseAddress = document.getElementById('warehouseAddress').value.trim();
+    const warehouseCoords = await geocodeAddress(warehouseAddress);
+
+    map.eachLayer(layer => {
+      if (layer instanceof L.Polyline || layer instanceof L.Marker) map.removeLayer(layer);
+    });
+
+    const suppliers = [];
+    const supplierBlocks = document.querySelectorAll('.supplier-block');
+    for (const supplier of supplierBlocks) {
+      const name = supplier.querySelector('.supplier-name').value.trim();
+      const address = supplier.querySelector('.supplier-address').value.trim();
+      const expiry = supplier.querySelector('.expiry-date').value;
+      if (!name || !address) continue;
+      const coords = await geocodeAddress(address);
+      suppliers.push({ name, address, expiry, coords });
+      L.marker(coords).addTo(map).bindPopup(`🏭 ${name}`);
+      const geometry = await getRouteGeometry(coords, warehouseCoords);
+      if (geometry) L.polyline(geometry, { color: 'red', weight: 4 }).addTo(map);
     }
 
-    function addLocation(regionBlock) {
-      const list = regionBlock.querySelector('.location-list');
-      const row = document.createElement('div');
-      row.className = 'location-row';
-      row.innerHTML = `
-        <input type="text" class="location-address" placeholder="Phường / địa chỉ cụ thể">
-        <input type="number" class="location-demand" placeholder="Số người" min="1">
-        <button onclick="this.parentElement.remove()">❌</button>
-      `;
-      list.appendChild(row);
-    }
+    L.marker(warehouseCoords).addTo(map).bindPopup("🏬 Kho hàng").openPopup();
 
-    const map = L.map('map').setView([10.762622, 106.660172], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-
-    async function geocodeAddress(address) {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (!data.length) throw new Error("Không tìm thấy địa chỉ: " + address);
-      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-    }
-
-    function categoryLabel(val) {
-      switch(val) {
-        case "processed_dry": return "Đã chế biến - Khô";
-        case "processed_liquid": return "Đã chế biến - Lỏng";
-        case "grocery": return "Hàng bách hóa";
-        default: return val;
+    const allocations = [];
+    const regionBlocks = document.querySelectorAll('.region-block');
+    for (const region of regionBlocks) {
+      const regionName = region.querySelector('.region-name').value.trim();
+      const locations = region.querySelectorAll('.location-row');
+      for (const loc of locations) {
+        const address = loc.querySelector('.location-address').value.trim();
+        const demand = parseInt(loc.querySelector('.location-demand').value);
+        if (!address || isNaN(demand)) continue;
+        const fullAddr = `${address}, ${regionName}, Hồ Chí Minh`;
+        const coords = await geocodeAddress(fullAddr);
+        allocations.push({ address, demand, allocated: demand, coords });
+        L.marker(coords).addTo(map).bindPopup(`📍 ${address}`);
+        const geometry = await getRouteGeometry(warehouseCoords, coords);
+        if (geometry) L.polyline(geometry, { color: 'green', weight: 3 }).addTo(map);
       }
     }
 
-    async function calculateOptimalDistribution() {
-      const supplierName = document.getElementById('supplierName').value.trim();
-      const supplierAddress = document.getElementById('supplierAddress').value.trim();
-      const warehouseAddress = document.getElementById('warehouseAddress').value.trim();
-      const itemName = document.getElementById('itemName').value.trim();
-      const category = document.getElementById('category').value;
-      const dishName = categoryLabel(category);
-      const supply = parseInt(document.getElementById('supply').value);
-      const expiryInput = document.getElementById('expiryDate').value;
-      const expiryDate = new Date(expiryInput);
+    localStorage.setItem("resultData", JSON.stringify({
+      addressC: warehouseAddress,
+      warehouseCoord: warehouseCoords,
+      suppliers,
+      allocations,
+      regionName: regionBlocks[0]?.querySelector('.region-name')?.value || '',
+      dishName: suppliers.map(s => s.name).join(", "),
+      expiry: suppliers[0]?.expiry || new Date().toISOString(),
+      totalCost: 0
+    }));
 
-      const supplierCoords = await geocodeAddress(supplierAddress);
-      const warehouseCoords = await geocodeAddress(warehouseAddress);
-
-      let regions = [];
-
-      for (const block of document.querySelectorAll('.region-block')) {
-        const name = block.querySelector('.region-name').value.trim();
-        const locations = [];
-        let latSum = 0, lonSum = 0;
-        for (const row of block.querySelectorAll('.location-row')) {
-          const addr = row.querySelector('.location-address').value.trim();
-          const demand = parseInt(row.querySelector('.location-demand').value);
-          if (!addr || isNaN(demand)) continue;
-          const coords = await geocodeAddress(`${addr}, ${name}, Hồ Chí Minh`);
-          latSum += coords[0];
-          lonSum += coords[1];
-          locations.push({ address: addr, demand, coords });
-        }
-        const totalDemand = locations.reduce((sum, l) => sum + l.demand, 0);
-        if (locations.length > 0) {
-          const centerCoords = [latSum / locations.length, lonSum / locations.length];
-          const routeInfo = await getRoute(warehouseCoords, centerCoords);
-          regions.push({ name, locations, totalDemand, distance: routeInfo.distance });
-        }
-      }
-
-      if (!regions.length) return alert("Không có dữ liệu đủ để tính toán!");
-
-      const best = regions.reduce((prev, cur) => {
-        const scorePrev = Math.abs(prev.totalDemand - supply) + prev.distance;
-        const scoreCur = Math.abs(cur.totalDemand - supply) + cur.distance;
-        return scoreCur < scorePrev ? cur : prev;
-      });
-
-      const totalDemand = best.totalDemand;
-      const allocations = best.locations.map(loc => ({
-        ...loc,
-        allocated: Math.round((loc.demand / totalDemand) * supply)
-      }));
-
-      map.eachLayer(layer => {
-        if (layer instanceof L.Polyline || layer instanceof L.Marker) map.removeLayer(layer);
-      });
-
-      L.marker(supplierCoords).addTo(map).bindPopup("Nhà cung cấp").openPopup();
-      L.marker(warehouseCoords).addTo(map).bindPopup("Kho hàng");
-
-      for (const l of allocations) {
-        L.marker(l.coords).addTo(map).bindPopup(`${l.address}<br>📦 ${l.allocated} suất`);
-      }
-
-      const points = [supplierCoords, warehouseCoords, ...allocations.map(l => l.coords)];
-      const lines = await getTripRoute(points);
-      if (lines) L.polyline(lines, { color: 'blue' }).addTo(map);
-      map.fitBounds(lines);
-
-      localStorage.setItem("resultData", JSON.stringify({
-        supplierName,
-        supplierAddress,
-        addressC: warehouseAddress,
-        itemName,
-        dishName,
-        expiry: expiryDate.toISOString().split('T')[0],
-        totalCost: best.distance.toFixed(2),
-        regionName: best.name,
-        allocations,
-        routeGeometry: lines
-      }));
-
-      window.location.href = "result.html";
-    }
-
-    async function getRoute(from, to) {
-      const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (!data.routes?.length) return { distance: Infinity, geometry: null };
-      return {
-        distance: data.routes[0].distance / 1000,
-        geometry: data.routes[0].geometry.coordinates.map(c => [c[1], c[0]])
-      };
-    }
-
-    async function getTripRoute(coords) {
-      const coordString = coords.map(c => `${c[1]},${c[0]}`).join(';');
-      const url = `https://router.project-osrm.org/trip/v1/driving/${coordString}?source=first&roundtrip=false&geometries=geojson`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (!data.trips?.length) return null;
-      return data.trips[0].geometry.coordinates.map(c => [c[1], c[0]]);
-    }
-  </script>
+    window.location.href = "result.html";
+  }
+</script>
 </body>
 </html>

@@ -2,47 +2,34 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>HỆ THỐNG PHÂN PHỐI</title>
+  <title>KẾT QUẢ PHÂN PHỐI</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="./asset/css/result.css">
 </head>
 <body>
 
-<h1>KẾT QUẢ HỆ THỐNG PHÂN PHỐI THEO KHU VỰC</h1>
+<h1>KẾT QUẢ PHÂN PHỐI THEO KHU VỰC</h1>
 <div class="layout">
   <div class="left-panel">
-    <div class="info-block">
-      <label>Tên nhà cung cấp:</label>
-      <span id="supplierName"></span>
-    </div>
-    <div class="info-block">
-      <label>Địa chỉ nhà cung cấp:</label>
-      <span id="supplierAddress"></span>
-    </div>
-    <div class="info-block">
-      <label>Tên mặt hàng:</label>
-      <span id="itemName"></span>
-    </div>
-    <div class="info-block">
-      <label>Kho cung cấp:</label>
-      <span id="addressC"></span>
-    </div>
-    <div class="info-block">
-      <label>Danh mục hàng hóa:</label>
-      <span id="dishName"></span>
-    </div>
-    <div class="info-block">
-      <label>Hạn sử dụng đến:</label>
-      <span id="expiryDate"></span>
-    </div>
-    <div class="info-block">
-      <label>Khu vực ưu tiên:</label>
-      <span id="regionName"></span>
-    </div>
-    <div class="info-block">
-      <label>Chi phí ước tính (km):</label>
-      <span id="totalCost"></span>
-    </div>
+    <div class="info-block"><label>Kho hàng:</label><span id="addressC"></span></div>
+    <div class="info-block"><label>Danh mục hàng hóa:</label><span id="dishName"></span></div>
+    <div class="info-block"><label>Hạn sử dụng:</label><span id="expiryDate"></span></div>
+    <div class="info-block"><label>Khu vực ưu tiên:</label><span id="regionName"></span></div>
+    <div class="info-block"><label>Chi phí ước tính (km):</label><span id="totalCost"></span></div>
+
+    <h3>Thông tin nhà cung cấp</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Tên nhà cung cấp</th>
+          <th>Địa chỉ</th>
+          <th>Mặt hàng</th>
+          <th>Số lượng</th>
+          <th>Đơn vị</th>
+        </tr>
+      </thead>
+      <tbody id="supplierTable"></tbody>
+    </table>
 
     <h3>Phân bổ chi tiết</h3>
     <table>
@@ -70,22 +57,25 @@
     throw new Error("Không tìm thấy resultData trong localStorage.");
   }
 
-  // Gán dữ liệu ra UI
-  document.getElementById("supplierName").textContent = result.supplierName || "Chưa có";
-  document.getElementById("supplierAddress").textContent = result.supplierAddress || "Chưa có";
-  document.getElementById("itemName").textContent = result.itemName || "Chưa có";
   document.getElementById("addressC").textContent = result.addressC;
   document.getElementById("dishName").textContent = result.dishName;
-
-  const formattedDate = new Date(result.expiry).toLocaleString("vi-VN", {
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit"
-  });
-  document.getElementById("expiryDate").textContent = formattedDate;
+  document.getElementById("expiryDate").textContent = new Date(result.expiry).toLocaleString("vi-VN");
   document.getElementById("regionName").textContent = result.regionName;
   document.getElementById("totalCost").textContent = result.totalCost + " km";
 
-  // Bảng phân bổ chi tiết
+  const supplierTable = document.getElementById("supplierTable");
+  (result.suppliers || []).forEach(s => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${s.name}</td>
+      <td>${s.address}</td>
+      <td>${s.item || ''}</td>
+      <td>${s.supply || ''}</td>
+      <td>${s.unit || ''}</td>
+    `;
+    supplierTable.appendChild(row);
+  });
+
   const table = document.getElementById("allocationsTable");
   result.allocations.forEach(item => {
     const row = document.createElement("tr");
@@ -97,43 +87,52 @@
     table.appendChild(row);
   });
 
-  // Bản đồ
   const map = L.map('map').setView([10.762622, 106.660172], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  const points = result.routeGeometry || [];
-
-  // Marker: nhà cung cấp
-  if (points.length > 0) {
-    const supplierMarker = L.marker(points[0]).addTo(map);
-    supplierMarker.bindPopup("🏭 Nhà cung cấp").openPopup();
+  async function getRouteGeometry(from, to) {
+    const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.routes?.length) return null;
+    return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
   }
 
-  // Marker: kho hàng
-  if (points.length > 1) {
-    const warehouseMarker = L.marker(points[1]).addTo(map);
-    warehouseMarker.bindPopup("🏬 Kho hàng");
-  }
+  (async () => {
+    const boundsCoords = [];
+    if (result.warehouseCoord) {
+      L.marker(result.warehouseCoord).addTo(map).bindPopup("🏬 Kho hàng").openPopup();
+      boundsCoords.push(result.warehouseCoord);
+    }
 
-  // Marker: các điểm phân phối
-  result.allocations.forEach(loc => {
-    L.marker(loc.coords).addTo(map)
-      .bindPopup(`📍 ${loc.address}<br>Phân phối: ${loc.allocated} suất`);
-  });
+    for (const s of result.suppliers || []) {
+      if (s.coords && result.warehouseCoord) {
+        L.marker(s.coords).addTo(map).bindPopup(`🏭 ${s.name}`);
+        boundsCoords.push(s.coords);
+        const geometry = await getRouteGeometry(s.coords, result.warehouseCoord);
+        if (geometry) {
+          L.polyline(geometry, { color: 'red', weight: 4 }).addTo(map);
+          geometry.forEach(p => boundsCoords.push(p));
+        }
+      }
+    }
 
-  // Đường: từ nhà cung cấp đến kho (đỏ), từ kho đến điểm phân phối (xanh)
-  if (points.length > 1) {
-    const supplierToWarehouse = [points[0], points[1]];
-    const warehouseToRecipients = points.slice(1);
+    for (const loc of result.allocations || []) {
+      L.marker(loc.coords).addTo(map).bindPopup(`📍 ${loc.address}<br>Phân phối: ${loc.allocated} suất`);
+      boundsCoords.push(loc.coords);
+      if (result.warehouseCoord && loc.coords) {
+        const geometry = await getRouteGeometry(result.warehouseCoord, loc.coords);
+        if (geometry) {
+          L.polyline(geometry, { color: 'green', weight: 3 }).addTo(map);
+          geometry.forEach(p => boundsCoords.push(p));
+        }
+      }
+    }
 
-    L.polyline(supplierToWarehouse, { color: 'red', weight: 5 }).addTo(map);
-    L.polyline(warehouseToRecipients, { color: 'blue', weight: 4 }).addTo(map);
-
-    const bounds = L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
-    map.fitBounds(bounds);
-  }
+    map.fitBounds(L.latLngBounds(boundsCoords));
+  })();
 </script>
 
 </body>
