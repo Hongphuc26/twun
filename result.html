@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Kết quả phân phối</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="./asset/css/styles.css">
+</head>
+<body>
+
+<h1>📊 Kết quả Tối ưu Phân phối</h1>
+<div class="layout">
+  <div class="left-panel">
+    <div class="info-block">
+      <label>🏭 Nhà cung cấp:</label>
+      <span id="providerName"></span>
+    </div>
+    <div class="info-block">
+      <label>📍 Kho cung cấp:</label>
+      <span id="addressC"></span>
+    </div>
+    <div class="info-block">
+      <label>📦 Danh mục hàng hóa:</label>
+      <span id="dishName"></span>
+    </div>
+    <div class="info-block">
+      <label>⏰ Hạn sử dụng đến:</label>
+      <span id="expiry"></span>
+    </div>
+    <div class="info-block">
+      <label>📍 Khu vực ưu tiên:</label>
+      <span id="regionName"></span>
+    </div>
+    <div class="info-block">
+      <label>🚛 Chi phí ước tính (km):</label>
+      <span id="totalCost"></span>
+    </div>
+
+    <h3>📌 Phân bổ chi tiết</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Địa điểm</th>
+          <th>Số người cần</th>
+          <th>Số suất phân phối</th>
+        </tr>
+      </thead>
+      <tbody id="allocationsTable"></tbody>
+    </table>
+  </div>
+  <div class="right-map">
+    <div id="map"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  const result = JSON.parse(localStorage.getItem("resultData"));
+  if (!result) {
+    alert("Không có dữ liệu kết quả!");
+    throw new Error("Không tìm thấy resultData trong localStorage.");
+  }
+
+  document.getElementById("providerName").textContent = result.providerName;
+  document.getElementById("addressC").textContent = result.addressC;
+  document.getElementById("dishName").textContent = result.dishName;
+  document.getElementById("expiry").textContent = result.expiry;
+  document.getElementById("regionName").textContent = result.regionName;
+  document.getElementById("totalCost").textContent = result.totalCost + " km";
+
+  const table = document.getElementById("allocationsTable");
+  result.allocations.forEach(item => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${item.address}</td>
+      <td>${item.demand}</td>
+      <td><strong>${item.allocated}</strong></td>
+    `;
+    table.appendChild(row);
+  });
+
+  const map = L.map('map').setView([10.762622, 106.660172], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  result.allocations.forEach(loc => {
+    L.marker(loc.coords).addTo(map)
+      .bindPopup(`<b>${loc.address}</b><br>Phân phối: ${loc.allocated} suất`);
+  });
+
+  if (result.routeGeometry && result.routeGeometry.length > 0) {
+    const route = L.polyline(result.routeGeometry, { color: 'blue' }).addTo(map);
+    map.fitBounds(route.getBounds());
+  }
+</script>
+
+</body>
+</html>

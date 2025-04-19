@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Phân phối theo khu vực</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="./asset/css/styles.css">
+</head>
+<body>
+
+  <h1>🚚 Hệ thống tối ưu phân phối theo khu vực</h1>
+
+  <div class="main-layout">
+    <div class="left-panel">
+      <div class="form-section">
+        <label>🏭 Tên nhà cung cấp:</label>
+        <input type="text" id="providerName" placeholder="VD: Siêu thị CoopMart" />
+
+        <label>📍 Địa chỉ kho:</label>
+        <input type="text" id="warehouseAddress" placeholder="VD: Bệnh viện Chợ Rẫy" />
+
+        <label>📦 Danh mục hàng hóa:</label>
+        <select id="category">
+          <option value="processed_dry">Hàng đã qua chế biến - khô</option>
+          <option value="processed_liquid">Hàng đã qua chế biến - lỏng</option>
+          <option value="grocery">Hàng bách hóa</option>
+        </select>
+
+        <label>⚖️ Đơn vị khối lượng:</label>
+        <select id="unit">
+          <option value="kg">Kilogram (kg)</option>
+          <option value="ml">Milliliter (ml)</option>
+          <option value="bich">Bịch</option>
+          <option value="suat">Suất ăn</option>
+        </select>
+
+        <label>🍱 Tổng số lượng (tùy theo đơn vị):</label>
+        <input type="number" id="supply" placeholder="VD: 300" />
+
+        <label>⏰ Hạn sử dụng (bao nhiêu ngày kể từ hôm nay):</label>
+        <input type="number" id="expiryDays" placeholder="VD: 3" />
+
+        <div id="regionContainer"></div>
+
+        <div class="button-row">
+          <button id="addRegion">➕ Thêm Quận</button>
+        </div>
+        <div class="button-row">
+          <button onclick="calculateOptimalDistribution()">🔍 Tính toán phân phối</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <!-- Script -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const regionContainer = document.getElementById('regionContainer');
+    document.getElementById('addRegion').onclick = () => addRegion();
+
+    function addRegion() {
+      const regionBlock = document.createElement('div');
+      regionBlock.className = 'region-block';
+      regionBlock.innerHTML = `
+        <label>🏙️ Tên Quận:</label>
+        <input type="text" class="region-name" placeholder="VD: Quận 1">
+        <div class="location-list"></div>
+        <button class="add-location">➕ Thêm địa điểm</button>
+      `;
+      regionContainer.appendChild(regionBlock);
+      regionBlock.querySelector('.add-location').onclick = () => addLocation(regionBlock);
+      addLocation(regionBlock);
+    }
+
+    function addLocation(regionBlock) {
+      const list = regionBlock.querySelector('.location-list');
+      const row = document.createElement('div');
+      row.className = 'location-row';
+      row.innerHTML = `
+        <input type="text" class="location-address" placeholder="Phường / địa chỉ cụ thể">
+        <input type="number" class="location-demand" placeholder="Số người" min="1">
+        <button onclick="this.parentElement.remove()">❌</button>
+      `;
+      list.appendChild(row);
+    }
+
+    const map = L.map('map').setView([10.762622, 106.660172], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    async function geocodeAddress(address) {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data.length) throw new Error("Không tìm thấy địa chỉ: " + address);
+      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+    }
+
+    function categoryLabel(val) {
+      switch(val) {
+        case "processed_dry": return "Đã chế biến - Khô";
+        case "processed_liquid": return "Đã chế biến - Lỏng";
+        case "grocery": return "Hàng bách hóa";
+        default: return val;
+      }
+    }
+
+    async function calculateOptimalDistribution() {
+      const providerName = document.getElementById('providerName').value.trim();
+      const warehouseAddress = document.getElementById('warehouseAddress').value.trim();
+      const category = document.getElementById('category').value;
+      const dishName = categoryLabel(category);
+      const supply = parseInt(document.getElementById('supply').value);
+      const expiryDays = parseInt(document.getElementById('expiryDays').value);
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + expiryDays);
+
+      const warehouseCoords = await geocodeAddress(warehouseAddress);
+      let regions = [];
+
+      for (const block of document.querySelectorAll('.region-block')) {
+        const name = block.querySelector('.region-name').value.trim();
+        const locations = [];
+        let latSum = 0, lonSum = 0;
+        for (const row of block.querySelectorAll('.location-row')) {
+          const addr = row.querySelector('.location-address').value.trim();
+          const demand = parseInt(row.querySelector('.location-demand').value);
+          if (!addr || isNaN(demand)) continue;
+          const coords = await geocodeAddress(`${addr}, ${name}, Hồ Chí Minh`);
+          latSum += coords[0];
+          lonSum += coords[1];
+          locations.push({ address: addr, demand, coords });
+        }
+        const totalDemand = locations.reduce((sum, l) => sum + l.demand, 0);
+        if (locations.length > 0) {
+          const centerCoords = [latSum / locations.length, lonSum / locations.length];
+          const routeInfo = await getRoute(warehouseCoords, centerCoords);
+          regions.push({ name, locations, totalDemand, distance: routeInfo.distance });
+        }
+      }
+
+      if (!regions.length) return alert("Không có dữ liệu đủ để tính toán!");
+
+      const best = regions.reduce((prev, cur) => {
+        const scorePrev = Math.abs(prev.totalDemand - supply) + prev.distance;
+        const scoreCur = Math.abs(cur.totalDemand - supply) + cur.distance;
+        return scoreCur < scorePrev ? cur : prev;
+      });
+
+      const totalDemand = best.totalDemand;
+      const allocations = best.locations.map(loc => ({
+        ...loc,
+        allocated: Math.round((loc.demand / totalDemand) * supply)
+      }));
+
+      map.eachLayer(layer => {
+        if (layer instanceof L.Polyline || layer instanceof L.Marker) map.removeLayer(layer);
+      });
+
+      L.marker(warehouseCoords).addTo(map).bindPopup("Kho cung cấp").openPopup();
+      for (const l of allocations) {
+        L.marker(l.coords).addTo(map).bindPopup(`${l.address}<br>${l.allocated} suất`);
+      }
+
+      const points = [warehouseCoords, ...allocations.map(l => l.coords)];
+      const lines = await getTripRoute(points);
+      if (lines) L.polyline(lines, { color: 'blue' }).addTo(map);
+      map.fitBounds(lines);
+
+      localStorage.setItem("resultData", JSON.stringify({
+        providerName,
+        addressC: warehouseAddress,
+        dishName,
+        expiry: expiryDate.toISOString().split('T')[0],
+        totalCost: best.distance.toFixed(2),
+        regionName: best.name,
+        allocations,
+        routeGeometry: lines
+      }));
+
+      window.location.href = "result.html";
+    }
+
+    async function getRoute(from, to) {
+      const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data.routes?.length) return { distance: Infinity, geometry: null };
+      return {
+        distance: data.routes[0].distance / 1000,
+        geometry: data.routes[0].geometry.coordinates.map(c => [c[1], c[0]])
+      };
+    }
+
+    async function getTripRoute(coords) {
+      const coordString = coords.map(c => `${c[1]},${c[0]}`).join(';');
+      const url = `https://router.project-osrm.org/trip/v1/driving/${coordString}?source=first&roundtrip=false&geometries=geojson`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data.trips?.length) return null;
+      return data.trips[0].geometry.coordinates.map(c => [c[1], c[0]]);
+    }
+  </script>
+</body>
+</html>
